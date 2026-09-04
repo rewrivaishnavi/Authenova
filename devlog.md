@@ -484,3 +484,87 @@ The project architecture has been successfully established following the modular
 
 ### Next Recommended Step
 Milestone 2 (or fixing the frontend lint setup) to continue building the core capabilities of the application.
+
+## Iteration 2 — 2026-09-04
+
+### Milestone
+Milestone 2 — Core API & Screening Orchestration
+
+### Objective
+Complete the remaining API mock endpoints, wire them into the FastAPI app, add the integration orchestrator service, write an end-to-end integration test suite, and perform final validation on a live server instance.
+
+### Changes Made
+- Added 8 API route modules (upload, extraction, validation, tampering, face, risk, report, screening) under `backend/app/api/routes/`.
+- Wired all 9 routers (including the pre-existing `health`) into `backend/app/main.py` under the `/api/v1` prefix.
+- Removed the inline `/health` and `/upload-document` handlers from `main.py`; both are now served by their dedicated routers (`health.router`, `upload.router`).
+- Added `backend/app/services/orchestrator/pipeline.py` — the `ScreeningPipeline` service that chains Upload → OCR → Validation → Tampering → Face → Risk → Report using a generated `document_id`.
+- Added the `/api/v1/screen` (full pipeline) and `/api/v1/results/{document_id}` (retrieval) endpoints.
+- Added Pydantic schemas for all endpoints (upload, extraction, validation, tampering, face, risk, report) under `backend/app/schemas/`.
+- Added `pytest` and `httpx` to `backend/requirements.txt`.
+- Added `backend/tests/test_api.py` with 10 integration tests covering all endpoints plus the full screening pipeline.
+
+### Files Created
+- `backend/app/api/routes/extraction.py`
+- `backend/app/api/routes/face.py`
+- `backend/app/api/routes/report.py`
+- `backend/app/api/routes/risk.py`
+- `backend/app/api/routes/screening.py`
+- `backend/app/api/routes/tampering.py`
+- `backend/app/api/routes/upload.py`
+- `backend/app/api/routes/validation.py`
+- `backend/app/services/orchestrator/pipeline.py`
+- `backend/tests/__init__.py`
+- `backend/tests/test_api.py`
+
+### Files Modified
+- `backend/app/main.py`
+- `backend/requirements.txt`
+
+### Files Deleted
+- None
+
+### Dependencies Changed
+- Added `pytest>=8.0.0` and `httpx>=0.27.0` to `backend/requirements.txt` (testing-only).
+
+### Verification
+- `./venv/Scripts/python.exe -m pytest tests/test_api.py -v` (from `backend/`) — PASS (10 passed in 0.67s)
+- FastAPI live startup via `./venv/Scripts/python.exe -m uvicorn app.main:app --port 8011` (background run on Windows, no nohup) — PASS
+- `GET /` — PASS (returns "Authenova API is running", version 0.1.0)
+- `GET /api/v1/health` — PASS (`{"status":"healthy"}`)
+- `GET /openapi.json` — PASS (all 10 paths registered)
+- `GET /docs` (Swagger UI) — PASS (HTTP 200)
+- `POST /api/v1/upload-document` (multipart) — PASS
+- `POST /api/v1/extract-data` — PASS (returns `TEST USER`, `ocr_confidence` 0.94)
+- `POST /api/v1/validate-document` — PASS (`is_valid_format=True`)
+- `POST /api/v1/detect-tampering` — PASS (`tampering_score` 0.18)
+- `POST /api/v1/verify-face` — PASS (`verification_status` `high_similarity`)
+- `POST /api/v1/calculate-risk` — PASS (`risk_level` low)
+- `POST /api/v1/screen` (end-to-end pipeline, real sample upload of `data/samples/documents/test_document.png`) — PASS (returned `DOC-03F23ECB`, status completed)
+- `GET /api/v1/results/DOC-03F23ECB` — PASS (full report with all module results)
+- `GET /api/v1/screening-report/DOC-001` — PASS
+- `git diff --cached` review of all staged files — PASS
+- Frontend browser testing — NOT TESTED (no frontend changes in this iteration)
+
+### Current State
+The FastAPI backend now exposes the complete document-screening API surface under `/api/v1`:
+`/health`, `/upload-document`, `/extract-data`, `/validate-document`, `/detect-tampering`, `/verify-face`, `/calculate-risk`, `/screening-report/{document_id}`, plus the integrated `/screen` (full pipeline) and `/results/{document_id}`. All responses are currently mock data served through real Pydantic schemas and a working `ScreeningPipeline` orchestrator that stores per-screening results in memory keyed by `document_id`. The integration test suite (10 tests) passes and the live server was exercised end-to-end.
+
+### Known Issues
+- All analysis modules (OCR, validation, tampering, face, risk) return hard-coded mock data; they are NOT connected to the actual detection services yet.
+- Screening results are stored in-memory only and are lost on server restart.
+- The `temp_validation` directory exists in `backend/` (pre-existing, untracked); its contents were not inspected in this iteration.
+- Frontend remains a shell that does not yet consume these endpoints.
+
+### Decisions
+- Kept all endpoints as mock implementations behind real schemas so the API contract is stable and testable before real services replace them, matching the "no fabrication / placeholder must be clearly marked" rule.
+- Used `document_id` as the single connecting identifier across the whole pipeline, exposing it to clients as the handle for retrieving screening results.
+- Chose to verify the server via a background uvicorn run on a non-default port (8011) after the previous Unix-style nohup attempt failed on Windows with `cygheap read copy failed` / `Win32 error 299`; this approach succeeded and no repository code was changed to accommodate it.
+
+### Remaining Work
+- Connect each pipeline stage to a real service (OCR via `backend/app/services/ocr/engine.py`, validation, tampering, face verification, risk scoring).
+- Persist screening results beyond in-memory state (e.g., the planned PostgreSQL layer).
+- Wire the frontend to consume `/api/v1/screen` and `/api/v1/results/{document_id}`.
+- Expand test coverage for error and validation-failure paths.
+
+### Next Recommended Step
+Replace the mock pipeline stages one at a time with the actual analysis services, starting with OCR, keeping the existing API contract intact.
