@@ -1,0 +1,6 @@
+{
+    "method": "ORB Copy-Move Detection",
+    "total_keypoints": 1230,
+    "suspicious_matches": 243,
+    "tampering_detected": true
+}
