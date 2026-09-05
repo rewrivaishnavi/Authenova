@@ -109,7 +109,13 @@ report = {
     "method": "ORB Copy-Move Detection",
     "total_keypoints": len(keypoints),
     "suspicious_matches": len(suspicious_matches),
-    "tampering_detected": len(suspicious_matches) > 0
+    "tampering_detected": len(suspicious_matches) > 0,
+    "suspicious_region": {
+        "x": int(x) if suspicious_points else None,
+        "y": int(y) if suspicious_points else None,
+        "width": int(w) if suspicious_points else None,
+        "height": int(h) if suspicious_points else None
+    }
 }
 
 with open("copy_move_result.json", "w") as file:
