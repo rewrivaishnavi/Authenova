@@ -1,0 +1,12 @@
+{
+    "method": "ORB Copy-Move Detection",
+    "total_keypoints": 1230,
+    "suspicious_matches": 243,
+    "tampering_detected": true,
+    "suspicious_region": {
+        "x": 35,
+        "y": 36,
+        "width": 930,
+        "height": 530
+    }
+}
